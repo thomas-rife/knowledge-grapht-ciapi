@@ -1,0 +1,6 @@
+pgmpy
+fastapi
+pandas
+numpy
+networkx
+uvicorn[standard]
