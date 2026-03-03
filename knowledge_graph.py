@@ -300,7 +300,7 @@ class CausalKnowledgeGraph:
         print(f"edges that cause cycle: {edges_that_cause_cycle}")
         return edges_that_cause_cycle
 
-    def determine_review_topics(self, *, student_topic_progressions: dict[str, float], alpha: float = 0.25) -> dict[str, float]:
+    def determine_review_topics(self, *, student_topic_progressions: dict[str, float], alpha: float = 1.0) -> dict[str, float]:
         inference = CausalInference(self.model)
 
         # Step 1: Build set of unmastered concepts C
@@ -333,27 +333,30 @@ class CausalKnowledgeGraph:
 
             print(f"This is the descendants list: {descendants}")
 
-            total_delta = 0.0
+            # Compute descendant deltas
+            deltas: list[float] = []
             for D in descendants:
                 pre_review_proficiency = inference.query(
-                    variables = [D],
-                    evidence = mastered_nodes
+                    variables=[D],
+                    evidence=mastered_nodes,
                 ).values[1]
 
                 print(f"pre review proficiency {pre_review_proficiency}")
 
                 post_review_proficiency = inference.query(
-                    variables = [D],
-                    evidence = mastered_nodes,
-                    do = {concept: 1}
+                    variables=[D],
+                    evidence=mastered_nodes,
+                    do={concept: 1},
                 ).values[1]
 
                 print(f"post review proficiency {post_review_proficiency}")
-
                 print(f"evidence list for queries: {mastered_nodes}")
 
                 delta_importance = float(post_review_proficiency - pre_review_proficiency)
-                total_delta += delta_importance
+                deltas.append(delta_importance)
+
+            k = len(descendants)
+            avg_desc_delta = (sum(deltas) / k) if k > 0 else 0.0
 
             # Self improvement term
             # pre_self = P(concept=1 | evidence)
@@ -362,9 +365,13 @@ class CausalKnowledgeGraph:
             delta_self = float(1.0 - pre_self)
             print(f"{concept} self delta: {delta_self}")
 
-            total_delta += alpha * delta_self
+            # Weighting: self weight shrinks as descendant count grows
+            # Leaf nodes (k=0): w_self=1, w_desc=0
+            w_self = 1.0 / (k + 1)
+            w_desc = 1.0 - w_self
 
-            rev_priors[concept] = total_delta
+            score = (w_desc * avg_desc_delta) + (w_self * delta_self)
+            rev_priors[concept] = score
 
         return rev_priors
 
