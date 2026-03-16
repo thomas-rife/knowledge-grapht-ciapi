@@ -77,9 +77,13 @@ class CausalKnowledgeGraph:
         """
         df = pd.DataFrame(data)
 
-        # giving each row a unique name
+        # Force the table to contain every graph node as a column.
+        # Missing topics stay NA, which means "no evidence yet", not "unmastered".
+        df = df.reindex(columns=self.nodes)
+
         df.index = [f"student_{i+1}" for i in range(len(df))]
-        def to_binary_or_na(x: Any):
+
+        def to_binary_or_na(x):
             if pd.isna(x):
                 return pd.NA
             return 1 if float(x) >= self.MASTERY_THRESHOLD else 0
@@ -301,6 +305,13 @@ class CausalKnowledgeGraph:
         return edges_that_cause_cycle
 
     def determine_review_topics(self, *, student_topic_progressions: dict[str, float], alpha: float = 1.0) -> dict[str, float]:
+
+        valid_nodes = set(self.nodes)
+        student_topic_progressions = {
+            k: v for k, v in student_topic_progressions.items()
+            if k in valid_nodes
+        }
+        
         inference = CausalInference(self.model)
 
         # Step 1: Build set of unmastered concepts C
