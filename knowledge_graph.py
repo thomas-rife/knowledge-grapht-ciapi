@@ -327,7 +327,7 @@ class CausalKnowledgeGraph:
         # Step 2: Build evidence dictionary
         mastered_nodes: dict[str, int] = {}
         for node, mastery in student_topic_progressions.items():
-            if mastery >= self.MASTERY_THRESHOLD:
+            if mastery > self.MASTERY_THRESHOLD:
                 mastered_nodes[node] = 1
 
         print(f"List of mastered nodes: {mastered_nodes}")
