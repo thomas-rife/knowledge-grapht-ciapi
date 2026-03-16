@@ -77,8 +77,7 @@ class CausalKnowledgeGraph:
         """
         df = pd.DataFrame(data)
 
-        # Force the table to contain every graph node as a column.
-        # Missing topics stay NA, which means "no evidence yet", not "unmastered".
+        # Ensure every graph node exists as a column, even if never observed.
         df = df.reindex(columns=self.nodes)
 
         df.index = [f"student_{i+1}" for i in range(len(df))]
@@ -163,6 +162,8 @@ class CausalKnowledgeGraph:
         """
         states: list[int] = [0, 1]  # 0 = not mastered, 1 = mastered
 
+        print("nodes:", self.nodes)
+        print("data_table columns:", list(data_table.columns))
 
         for node in self.nodes:
             parents: list[str] = self.model.get_parents(node)
@@ -311,7 +312,7 @@ class CausalKnowledgeGraph:
             k: v for k, v in student_topic_progressions.items()
             if k in valid_nodes
         }
-        
+
         inference = CausalInference(self.model)
 
         # Step 1: Build set of unmastered concepts C
